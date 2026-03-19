@@ -1151,7 +1151,10 @@ class Pos_Product_Api extends API_Base {
 	}
 
 	/**
-	 * Normalizes attribute options to plain string values.
+	 * Normalizes attribute options for variation values.
+	 *
+	 * For taxonomy attributes (e.g. pa_color), Woo variations expect term slugs.
+	 * For custom attributes, plain option names are used.
 	 *
 	 * @param array $attribute Attribute payload item.
 	 *
@@ -1159,6 +1162,7 @@ class Pos_Product_Api extends API_Base {
 	 */
 	private function get_attribute_option_names( $attribute ) {
 		$options = array();
+		$is_taxonomy_attribute = ! empty( $attribute['id'] ) || ( ! empty( $attribute['slug'] ) && 0 === strpos( $attribute['slug'], 'pa_' ) );
 
 		if ( empty( $attribute['options'] ) || ! is_array( $attribute['options'] ) ) {
 			return $options;
@@ -1167,9 +1171,20 @@ class Pos_Product_Api extends API_Base {
 		foreach ( $attribute['options'] as $option ) {
 			$option_name = '';
 			if ( is_array( $option ) ) {
-				$option_name = ! empty( $option['name'] ) ? $option['name'] : ( ! empty( $option['slug'] ) ? $option['slug'] : '' );
+				if ( $is_taxonomy_attribute ) {
+					if ( ! empty( $option['slug'] ) ) {
+						$option_name = $option['slug'];
+					} elseif ( ! empty( $option['name'] ) ) {
+						$option_name = sanitize_title( $option['name'] );
+					}
+				} else {
+					$option_name = ! empty( $option['name'] ) ? $option['name'] : ( ! empty( $option['slug'] ) ? $option['slug'] : '' );
+				}
 			} elseif ( is_string( $option ) || is_numeric( $option ) ) {
 				$option_name = (string) $option;
+				if ( $is_taxonomy_attribute ) {
+					$option_name = sanitize_title( $option_name );
+				}
 			}
 
 			$option_name = trim( $option_name );

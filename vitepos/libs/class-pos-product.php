@@ -1502,6 +1502,16 @@ class POS_Product {
 
 			
 			foreach ( $product->get_variation_attributes() as $attribute_name => $attribute ) {
+				$taxonomy = str_replace( 'attribute_', '', wc_attribute_taxonomy_slug( $attribute_name ) );
+				if ( taxonomy_exists( $taxonomy ) && ! empty( $attribute ) ) {
+					$term = get_term_by( 'slug', $attribute, $taxonomy );
+					if ( ! $term ) {
+						$term = get_term_by( 'name', $attribute, $taxonomy );
+					}
+					if ( $term && ! is_wp_error( $term ) ) {
+						$attribute = $term->slug;
+					}
+				}
 
 				
 				$attributes[] = array(
