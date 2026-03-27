@@ -2155,15 +2155,7 @@ class POS_Settings extends Vitepos_Module {
 		 *
 		 * @since 1.0
 		 */
-		$options['license_info'] = apply_filters( 'vitepos/filter/get-license-info', null );
-		if ( is_object( $options['license_info'] ) && ! empty( $options['license_info']->license_key ) ) {
-			$options['license_info']->license_key = substr(
-				                                        $options['license_info']->license_key,
-				                                        0,
-				                                        4
-			                                        ) . '-XXXX-XXXX-' . substr( $options['license_info']->license_key,
-					- 4 );
-		}
+		$options['license_info'] = null;
 		$options['has_reward'] = appsbd_is_activated_plugin( 'vite-rewards-pro/vite-rewards-pro.php' );
 
 		return $options;
