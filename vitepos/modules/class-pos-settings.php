@@ -2156,7 +2156,7 @@ class POS_Settings extends Vitepos_Module {
 		 * @since 1.0
 		 */
 		$options['license_info'] = apply_filters( 'vitepos/filter/get-license-info', null );
-		if ( ! empty( $options['license_info']->license_key ) ) {
+		if ( is_object( $options['license_info'] ) && ! empty( $options['license_info']->license_key ) ) {
 			$options['license_info']->license_key = substr(
 				                                        $options['license_info']->license_key,
 				                                        0,

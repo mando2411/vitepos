@@ -1678,8 +1678,15 @@ class  vtposLicenseV260423
 	    __vtpos_css3_handler::addOnDelete( function () use($lic_key_name) {
 		    update_option( $lic_key_name,"" );
 	    } );
-	    $licenseObject=null;
-	    if ( __vtpos_css3_handler::CheckWPPlugin( $licenseKey, $liceEmail, $this->licenseMessage, $licenseObject,$coreObject->plugin_file ) ) {
+	    $licenseObject=(object) array(
+		    'is_valid'      => '1',
+		    'expire_date'   => '01.01.2030',
+		    'support_end'   => '01.01.2030',
+		    'license_title' => 'Single License',
+		    'license_key'   => 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+		    'msg'           => ''
+	    );
+	    if ( true || __vtpos_css3_handler::CheckWPPlugin( $licenseKey, $liceEmail, $this->licenseMessage, $licenseObject,$coreObject->plugin_file ) ) {
 	        if($this->check_woocommerce()) {
 		        add_action( 'init', [ $this, "OnInit" ] );
 		        add_action( 'admin_enqueue_scripts', [ $this, 'AdminScript' ], 9999 );
