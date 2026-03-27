@@ -1722,20 +1722,6 @@ class  vtposLicenseV260423
 				add_action('wp_print_styles', [$coreObject, 'SetClientStyleBase'], 998);*/
 		        add_action( 'admin_menu', [ $this, "AdminMenu" ] );
 		        //  add_action('admin_notices', [$coreObject, "OnAdminNotices"]);
-		        add_filter( "vitepos/filter/get-license-info", function ( $info,$resp=null ) use ( $licenseObject ) {
-                    if(empty($resp)){
-	                    $resp=$licenseObject;
-                    }
-			        $resp->deactivation_link = admin_url( "admin-post.php?action=VitePOS_vtp_deactivate_license" );
-
-                    if(isset($resp->lic_param)){
-                        unset($resp->lic_param);
-                    }
-                    if(isset($resp->other_param)){
-				        unset($resp->other_param);
-			        }
-			        return $resp;
-		        },10,2 );
 		       // add_action( 'admin_post_VitePOS_vtp_deactivate_license', function () use ( $mainobj ) {
 			        //if ( __vtpos_css3_handler::RemoveLicenseKey( $mainobj->coreObject->plugin_file, $message ) ) {
 				      //  update_option( "vtp_lic_Key", "" ) || add_option( "vtp_lic_Key", "" );
