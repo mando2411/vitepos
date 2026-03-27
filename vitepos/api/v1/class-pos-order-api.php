@@ -1125,6 +1125,13 @@ class Pos_Order_Api extends API_Base {
 					}
 					$order->update_meta_data( '_vt_has_refund', 'Y' );
 					$order->save();
+					/**
+					 * Its for process restore stock
+					 *
+					 * @since 3.4.0
+					 */
+					do_action( 'appsbd/vitepos/action/vt-order-refunded',$refund);
+
 					$return_type = $is_full ? 'F' : 'P';
 					/**
 					 * Its for process restore stock

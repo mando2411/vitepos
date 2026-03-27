@@ -1419,7 +1419,7 @@ class POS_Product {
 				$variation_obj->outlet_id = absint( $outletinfo->id );
 			}
 			$variation_obj->price_html   = wc_price( $variation_obj->price ); 
-			$variation_obj->manage_stock = POS_Settings::get_manage_stock_without_parent($variation);
+			$variation_obj->manage_stock = $variation->get_manage_stock();
 
 			if ( POS_Settings::is_default_stock() ) {
 				$variation_obj->stock_quantity = $variation->get_stock_quantity() ? $variation->get_stock_quantity() : 0;
@@ -1502,16 +1502,6 @@ class POS_Product {
 
 			
 			foreach ( $product->get_variation_attributes() as $attribute_name => $attribute ) {
-				$taxonomy = str_replace( 'attribute_', '', wc_attribute_taxonomy_slug( $attribute_name ) );
-				if ( taxonomy_exists( $taxonomy ) && ! empty( $attribute ) ) {
-					$term = get_term_by( 'slug', $attribute, $taxonomy );
-					if ( ! $term ) {
-						$term = get_term_by( 'name', $attribute, $taxonomy );
-					}
-					if ( $term && ! is_wp_error( $term ) ) {
-						$attribute = $term->slug;
-					}
-				}
 
 				
 				$attributes[] = array(

@@ -695,12 +695,12 @@ if ( ! class_exists( __NAMESPACE__ . '\Client_Language' ) ) {
 			$language['Automatically rounds the order total to the nearest value for easier billing']                                = $kernel_object->__( 'Automatically rounds the order total to the nearest value for easier billing' );
 
 			
-			$language['Tax Qr Code Position'] = $kernel_object->__( 'Tax Qr Code Position' );
-			$language['Show Order Tax Qr Code'] = $kernel_object->__( 'Show Order Tax Qr Code' );
+			$language['Tax Qr Code Position']     = $kernel_object->__( 'Tax Qr Code Position' );
+			$language['Show Order Tax Qr Code']   = $kernel_object->__( 'Show Order Tax Qr Code' );
 			$language['Show Unit Tax Percentage'] = $kernel_object->__( 'Show Unit Tax Percentage' );
-			$language['Unit Tax Label'] = $kernel_object->__( 'Unit Tax Label' );
-
-
+			$language['Unit Tax Label']           = $kernel_object->__( 'Unit Tax Label' );
+			$language['Enable Gift Receipt']           = $kernel_object->__( 'Enable Gift Receipt' );
+			$language['User can print a gift receipt after order.']           = $kernel_object->__( 'User can print a gift receipt after order.' );
 
 
 			return $language;
@@ -1809,6 +1809,49 @@ if ( ! class_exists( __NAMESPACE__ . '\Client_Language' ) ) {
 			$language['Enter the cash amount to start a new drawer.']                                             = $kernel_object->__( 'Enter the cash amount to start a new drawer.' );
 			$language['Expected Cash Amount']                                                                     = $kernel_object->__( 'Expected Cash Amount' );
 
+			
+			$language['Process By']                      = $kernel_object->__( 'Process By' );
+			$language['Offline Id']                      = $kernel_object->__( 'Offline Id' );
+			$language['Date Between']                    = $kernel_object->__( 'Date Between' );
+			$language['Choose option']                   = $kernel_object->__( 'Choose option' );
+			$language['Enter value']                     = $kernel_object->__( 'Enter value' );
+			$language['From']                            = $kernel_object->__( 'From' );
+			$language['To']                              = $kernel_object->__( 'To' );
+			$language['Rocket']                          = $kernel_object->__( 'Rocket' );
+			$language['Nogod']                           = $kernel_object->__( 'Nogod' );
+			$language['bKash']                           = $kernel_object->__( 'bKash' );
+			$language['Upay']                            = $kernel_object->__( 'Upay' );
+			$language['Bank Cheque']                     = $kernel_object->__( 'Bank Cheque' );
+			$language['Custom']                          = $kernel_object->__( 'Custom' );
+			$language['bKash Number']                    = $kernel_object->__( 'bKash Number' );
+			$language['Rocket Number']                   = $kernel_object->__( 'Rocket Number' );
+			$language['Nagad Number']                    = $kernel_object->__( 'Nagad Number' );
+			$language['Upay Number']                     = $kernel_object->__( 'Upay Number' );
+			$language['Last 4 Digit']                    = $kernel_object->__( 'Last 4 Digit' );
+			$language['Product Count']                   = $kernel_object->__( 'Product Count' );
+			$language['Purchase Date']                   = $kernel_object->__( 'Purchase Date' );
+			$language['Choose date']                     = $kernel_object->__( 'Choose date' );
+			$language['Enter name']                      = $kernel_object->__( 'Enter name' );
+			$language['Staff']                           = $kernel_object->__( 'Staff' );
+			$language['ID']                              = $kernel_object->__( 'ID' );
+			$language['Closing cash drawer']             = $kernel_object->__( 'Closing cash drawer' );
+			$language['- Total cash remains of the day'] = $kernel_object->__( '- Total cash remains of the day' );
+
+			
+			$language['Data has been loaded. To Export data click on the Download button.'] = $kernel_object->__('Data has been loaded. To Export data click on the Download button.');
+			$language['Product Data'] = $kernel_object->__('Product Data');
+			$language['Top 100 PDF'] = $kernel_object->__('Top 100 PDF');
+			$language['Top 100 CSV'] = $kernel_object->__('Top 100 CSV');
+			$language['Top 100 Excel'] = $kernel_object->__('Top 100 Excel');
+			$language['Export'] = $kernel_object->__('Export');
+
+			
+			$language['Shop Name'] = $kernel_object->__('Shop Name');
+			$language['Logo'] = $kernel_object->__('Logo');
+			$language['Barcode label position'] = $kernel_object->__('Barcode label position');
+			$language['Barcode logo position'] = $kernel_object->__('Barcode logo position');
+
+			$language['Gift Receipt'] = $kernel_object->__('Gift Receipt');
 
 			return $language;
 		}

@@ -13,6 +13,7 @@ namespace VitePos\Api\V1;
 use Appsbd\V1\libs\API_Data_Response;
 use Appsbd\V1\libs\API_Response;
 use Appsbd\V1\libs\AppInput;
+use SimplePie\Exception;
 use VitePos\Core\ViteposModel;
 use VitePos\Libs\API_Base;
 use VitePos\Libs\POS_Product;
@@ -654,12 +655,14 @@ class Pos_Product_Api extends API_Base {
 					if ( ! empty( $terms ) ) {
 						foreach ( $terms as $term ) {
 							$term_name = sanitize_text_field( $term['name'] );
+							$term_slug = str_replace( ' ', '-',  $term['name']);
 							$term_desc = isset( $term['description'] ) ? sanitize_text_field( $term['description'] ) : '';
 							if ( ! term_exists( $term_name, $taxonomy ) ) {
 								wp_insert_term(
 									$term_name,
 									$taxonomy,
 									array(
+										'slug' => $term_slug,
 										'description' => $term_desc,
 									)
 								);
@@ -1129,197 +1132,6 @@ class Pos_Product_Api extends API_Base {
 	}
 
 	/**
-	 * Detects whether an attribute is color-like.
-	 *
-	 * @param array $attribute Attribute payload item.
-	 *
-	 * @return bool
-	 */
-	private function is_color_attribute( $attribute ) {
-		$slug_name = '';
-		if ( ! empty( $attribute['slug'] ) ) {
-			$slug_name = sanitize_title( $attribute['slug'] );
-		} elseif ( ! empty( $attribute['name'] ) ) {
-			$slug_name = sanitize_title( $attribute['name'] );
-		}
-
-		if ( '' === $slug_name ) {
-			return false;
-		}
-
-		return false !== strpos( $slug_name, 'color' ) || false !== strpos( $slug_name, 'colour' );
-	}
-
-	/**
-	 * Normalizes attribute options for variation values.
-	 *
-	 * For taxonomy attributes (e.g. pa_color), Woo variations expect term slugs.
-	 * For custom attributes, plain option names are used.
-	 *
-	 * @param array $attribute Attribute payload item.
-	 *
-	 * @return array
-	 */
-	private function get_attribute_option_names( $attribute ) {
-		$options = array();
-		$is_taxonomy_attribute = ! empty( $attribute['id'] ) || ( ! empty( $attribute['slug'] ) && 0 === strpos( $attribute['slug'], 'pa_' ) );
-
-		if ( empty( $attribute['options'] ) || ! is_array( $attribute['options'] ) ) {
-			return $options;
-		}
-
-		foreach ( $attribute['options'] as $option ) {
-			$option_name = '';
-			if ( is_array( $option ) ) {
-				if ( $is_taxonomy_attribute ) {
-					if ( ! empty( $option['slug'] ) ) {
-						$option_name = $option['slug'];
-					} elseif ( ! empty( $option['name'] ) ) {
-						$option_name = sanitize_title( $option['name'] );
-					}
-				} else {
-					$option_name = ! empty( $option['name'] ) ? $option['name'] : ( ! empty( $option['slug'] ) ? $option['slug'] : '' );
-				}
-			} elseif ( is_string( $option ) || is_numeric( $option ) ) {
-				$option_name = (string) $option;
-				if ( $is_taxonomy_attribute ) {
-					$option_name = sanitize_title( $option_name );
-				}
-			}
-
-			$option_name = trim( $option_name );
-			if ( '' !== $option_name ) {
-				$options[] = $option_name;
-			}
-		}
-
-		return array_values( array_unique( $options ) );
-	}
-
-	/**
-	 * Finds first color attribute with options.
-	 *
-	 * @param array $attributes Product attributes payload.
-	 *
-	 * @return array|null
-	 */
-	private function get_color_attribute_for_auto_variable( $attributes ) {
-		if ( empty( $attributes ) || ! is_array( $attributes ) ) {
-			return null;
-		}
-
-		foreach ( $attributes as $attribute ) {
-			if ( ! is_array( $attribute ) || ! $this->is_color_attribute( $attribute ) ) {
-				continue;
-			}
-
-			$attribute['options'] = $this->get_attribute_option_names( $attribute );
-			if ( ! empty( $attribute['options'] ) ) {
-				return $attribute;
-			}
-		}
-
-		return null;
-	}
-
-	/**
-	 * Builds auto variations for color options only.
-	 *
-	 * @param array $color_attribute Color attribute payload.
-	 *
-	 * @return array
-	 */
-	private function build_auto_variations_from_color( $color_attribute ) {
-		$variations  = array();
-		$options     = ! empty( $color_attribute['options'] ) && is_array( $color_attribute['options'] ) ? $color_attribute['options'] : array();
-		$option_size = count( $options );
-
-		if ( 0 === $option_size ) {
-			return $variations;
-		}
-
-		$manage_stock     = 1 == $this->get_payload( 'manage_stock', 0 ) ? 1 : 0;
-		$total_quantity   = (float) $this->get_payload( 'stock_quantity', 0 );
-		$low_stock_amount = (float) $this->get_payload( 'low_stock_amount', 0 );
-		$each_quantity    = $manage_stock ? round( $total_quantity / $option_size, 4 ) : 0;
-
-		$attribute_name = ! empty( $color_attribute['name'] ) ? $color_attribute['name'] : ( ! empty( $color_attribute['slug'] ) ? $color_attribute['slug'] : 'Color' );
-		$attribute_slug = ! empty( $color_attribute['slug'] ) ? $color_attribute['slug'] : sanitize_title( $attribute_name );
-
-		foreach ( $options as $option_name ) {
-			$variations[] = array(
-				'id'                  => 0,
-				'regular_price'       => (float) $this->get_payload( 'regular_price', 0.00 ),
-				'sale_price'          => (float) $this->get_payload( 'sale_price', 0.00 ),
-				'sku'                 => '',
-				'barcode'             => '',
-				'global_unique_id'    => '',
-				'attributes'          => array(
-					array(
-						'id'     => ! empty( $color_attribute['id'] ) ? absint( $color_attribute['id'] ) : 0,
-						'name'   => $attribute_name,
-						'slug'   => $attribute_slug,
-						'option' => $option_name,
-					),
-				),
-				'is_parent_dimension' => true,
-				'tax_status'          => $this->get_payload( 'tax_status', '' ),
-				'tax_class'           => $this->get_payload( 'tax_class', '' ),
-				'weight'              => $this->get_payload( 'weight', '0.00' ),
-				'height'              => $this->get_payload( 'height', '0.00' ),
-				'length'              => $this->get_payload( 'length', '0.00' ),
-				'width'               => $this->get_payload( 'width', '0.00' ),
-				'manage_stock'        => $manage_stock,
-				'stock_quantity'      => $each_quantity,
-				'low_stock_amount'    => $low_stock_amount,
-				'purchase_cost'       => (float) $this->get_payload( 'purchase_cost', 0.00 ),
-			);
-		}
-
-		return $variations;
-	}
-
-	/**
-	 * Converts simple payload to variable payload when multi-color setup is detected.
-	 *
-	 * @return void
-	 */
-	private function normalize_payload_for_auto_variable() {
-		if ( empty( $this->payload ) || ! is_array( $this->payload ) ) {
-			return;
-		}
-
-		$enabled = apply_filters( 'appsbd/vitepos/filter/auto-convert-simple-to-variable', true, $this->payload );
-		if ( ! $enabled ) {
-			return;
-		}
-
-		$current_type = $this->get_payload( 'type', 'simple' );
-		if ( 'variable' === $current_type ) {
-			return;
-		}
-
-		$attributes     = $this->get_payload( 'attributes', array() );
-		$has_variations = ! empty( $this->payload['variations'] ) && is_array( $this->payload['variations'] );
-		$color_attr     = $this->get_color_attribute_for_auto_variable( $attributes );
-
-		$should_convert = $has_variations;
-		if ( ! $should_convert && ! empty( $color_attr ) && count( $color_attr['options'] ) > 1 ) {
-			$should_convert = true;
-		}
-
-		if ( ! $should_convert ) {
-			return;
-		}
-
-		$this->payload['type'] = 'variable';
-
-		if ( ! $has_variations && ! empty( $color_attr ) ) {
-			$this->payload['variations'] = $this->build_auto_variations_from_color( $color_attr );
-		}
-	}
-
-	/**
 	 * The getStock is generated by appsbd
 	 *
 	 * @param any $data Its string.
@@ -1497,9 +1309,6 @@ class Pos_Product_Api extends API_Base {
 
 				return $this->response->get_response();
 			}
-
-			$this->normalize_payload_for_auto_variable();
-
 			if ( 'variable' == $this->payload['type'] ) {
 				$product = new \WC_Product_Variable();
 				$product->set_name( $this->get_payload( 'name', '' ) );
@@ -1512,11 +1321,31 @@ class Pos_Product_Api extends API_Base {
 				}
 				$product->set_slug( str_replace( ' ', '_', strtolower( $this->payload['name'] ) ) );
 
-				if ( '' == $this->payload['sku'] ) {
-					$product->set_sku( str_replace( ' ', '-', strtolower( $this->payload['name'] ) ) );
-				} else {
-					$product->set_sku( $this->payload['sku'] );
+
+
+
+
+
+
+
+
+
+
+
+
+				$rawSku = ( '' == $this->payload['sku'] )
+					? $this->payload['name']
+					: $this->payload['sku'];
+
+				$sku = $this->generate_unique_sku( $rawSku, $this->payload['id'] ?? 0 );
+
+				if ( empty($sku) ) {
+					$this->add_error( 'SKU already exist' );
+					$this->response->set_response(false);
+					return $this->response->get_response();
 				}
+				$product->set_sku( $sku );
+
 				$product->set_status( $this->get_payload( 'status', 'publish' ) );
 				$product->set_attributes(
 					$this->get_attributes(
@@ -1530,10 +1359,16 @@ class Pos_Product_Api extends API_Base {
 				$product->set_height( $this->get_payload( 'height', '0.00' ) );
 				$product->set_length( $this->get_payload( 'length', '0.00' ) );
 				$product->set_width( $this->get_payload( 'width', '0.00' ) );
-				$product->add_meta_data(
-					'_vt_barcode',
-					str_replace( ' ', '-', strtolower( $this->payload['barcode'] ) )
-				);
+
+				$barcode = $this->get_payload('barcode','');
+				if(!empty($barcode)){
+					if(!$this->set_product_barcode($product,$barcode)){
+						$this->add_error("This barcode already exists.");
+						$this->set_response(false,null);
+
+						return $this->response->get_response();
+					}
+				}
 
 				if ( ! empty( $this->get_payload( 'global_unique_id', '' ) ) ) {
 					if ( ! $this->set_global_uid( $product, $this->get_payload( 'global_unique_id', '' ) ) ) {
@@ -1547,14 +1382,36 @@ class Pos_Product_Api extends API_Base {
 				$product->add_meta_data( '_vt_is_favorite', $this->get_payload( 'is_favorite', 'N' ) );
 				$product->add_meta_data( '_vt_is_hidden', $this->get_payload( 'is_hidden', 'N' ) );
 				$product_id = $product->save();
-				if ( ! empty( $product_id ) ) {
-					$this->call_product_action( $product_id );
-					foreach ( $this->get_payload( 'variations', array() ) as $v_ind => $vari ) {
-						$variation = $this->add_variation_product( $product_id, $vari, $product->get_name() );
-						if ( ! empty( $variation ) ) {
-							$this->call_product_variation_action( $variation->get_id(), $v_ind, $product_id );
+
+				if ( empty($product_id) ) {
+					$this->add_error( 'Product creation failed' );
+					$this->set_response( false );
+
+					return $this->response->get_response();
+				}
+
+				$created_variation_ids = [];
+
+				try {
+
+					$this->call_product_action($product_id);
+
+					foreach ( $this->get_payload('variations', []) as $v_ind => $vari ) {
+
+						$variation = $this->add_variation_product($product_id, $vari, $product->get_name());
+						if ( empty($variation) || ! $variation instanceof \WC_Product_Variation ) {
+							throw new Exception('Variation create failed at index '.$v_ind);
 						}
+
+						$created_variation_ids[] = $variation->get_id();
+
+						$this->call_product_variation_action(
+							$variation->get_id(),
+							$v_ind,
+							$product_id
+						);
 					}
+
 					$product = wc_get_product( $product_id );
 
 					$pos_product = POS_Product::get_product_data( $product );
@@ -1562,7 +1419,11 @@ class Pos_Product_Api extends API_Base {
 					$this->set_response( true, '', $pos_product );
 
 					return $this->response->get_response();
-				} else {
+
+
+				} catch ( \Throwable $e ) {
+					$this->rollback_product($product_id, $created_variation_ids);
+
 					$this->add_error( 'Product creation failed' );
 					$this->set_response( false );
 
@@ -1608,37 +1469,54 @@ class Pos_Product_Api extends API_Base {
 						)
 					);
 				}
-				if ( '' != $this->payload['slug'] ) {
-					$new_product->set_slug( strtolower( $this->get_payload( 'slug' ) ) );
-				} else {
-					$new_product->set_slug( sanitize_title( strtolower( $this->get_payload( 'name' ) ) ) );
-				}
-				$sku         = ( '' == $this->payload['sku'] ) ? str_replace(
-					' ',
-					'-',
-					strtolower( $this->payload['name'] )
-				) : $this->payload['sku'];
-				$existing_id = wc_get_product_id_by_sku( $sku );
 
-				if ( $existing_id ) {
-					$existing_product = wc_get_product( $existing_id );
 
-					if ( $existing_product && 'trash' !== $existing_product->get_status() ) {
-						
-						$this->add_error( 'SKU already exists' );
 
-						return $this->response->get_response();
-					}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+				$rawSku = ( '' == $this->payload['sku'] )
+					? $this->payload['name']
+					: $this->payload['sku'];
+
+				$sku = $this->generate_unique_sku( $rawSku, $this->payload['id'] ?? 0 );
+
+				if ( empty($sku) ) {
+					$this->add_error( 'SKU already exist' );
+					$this->response->set_response(false);
+					return $this->response->get_response();
 				}
 
 				
 				$new_product->set_sku( $sku );
 				$new_product->add_meta_data( '_vt_is_favorite', $this->get_payload( 'is_favorite', 'N' ) );
 				$new_product->add_meta_data( '_vt_is_hidden', $this->get_payload( 'is_hidden', 'N' ) );
-				$new_product->add_meta_data(
-					'_vt_barcode',
-					str_replace( ' ', '-', strtolower( $this->get_payload( 'barcode', '' ) ) )
-				);
+				$barcode = $this->get_payload('barcode','');
+				if(!empty($barcode)){
+					if(!$this->set_product_barcode($new_product,$barcode)){
+						$this->add_error("This barcode already exists.");
+						$this->set_response(false,null);
+
+						return $this->response->get_response();
+					}
+				}
 				if ( ! empty( $this->get_payload( 'global_unique_id', '' ) ) ) {
 					if ( ! $this->set_global_uid( $new_product, $this->get_payload( 'global_unique_id', '' ) ) ) {
 						$this->add_error( 'Invalid or duplicated GTIN, UPC, EAN or ISBN.' );
@@ -1714,22 +1592,28 @@ class Pos_Product_Api extends API_Base {
 	}
 
 	/**
+	 * The rollback product is generated by appsbd
+	 *
+	 * @param mixed $product_id It is product_id param.
+	 * @param mixed $variation_ids It is variation_ids param.
+	 */
+
+	private function rollback_product( $product_id, $variation_ids = [] ) {
+		foreach ( $variation_ids as $vid ) {
+			wp_delete_post( $vid, true );
+		}
+		wp_delete_post( $product_id, true );
+		wc_delete_product_transients( $product_id );
+	}
+
+
+	/**
 	 * The update product is generated by appsbd.
 	 *
 	 * @return \Appsbd\V1\libs\API_Response
 	 * @throws \WC_Data_Exception Throws error.
 	 */
 	public function update_product() {
-		$this->normalize_payload_for_auto_variable();
-
-		if ( 'variable' == $this->payload['type'] && ! empty( $this->payload['id'] ) ) {
-			$current_product = wc_get_product( $this->payload['id'] );
-			if ( ! empty( $current_product ) && 'variable' !== $current_product->get_type() ) {
-				wp_set_object_terms( $current_product->get_id(), 'variable', 'product_type' );
-				wc_delete_product_transients( $current_product->get_id() );
-			}
-		}
-
 		if ( 'simple' == $this->payload['type'] ) {
 			$new_product = wc_get_product( $this->payload['id'] );
 			$new_product->set_name( $this->get_payload( 'name', '' ) );
@@ -1769,30 +1653,47 @@ class Pos_Product_Api extends API_Base {
 			} else {
 				$new_product->set_slug( sanitize_title( strtolower( $this->get_payload( 'name' ) ) ) );
 			}
-			$sku = ( '' == $this->payload['sku'] ) ? str_replace(
-				' ',
-				'-',
-				strtolower( $this->payload['name'] )
-			) : $this->payload['sku'];
-			if ( wc_get_product_id_by_sku( $sku ) && wc_get_product_id_by_sku( $sku ) != $this->payload['id'] ) {
-				if ( '' == $this->payload['sku'] ) {
-					$this->add_error( 'Please provide a SKU or change the name of product' );
-					$this->add_error( 'SKU already Exist' );
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+			$rawSku = ( '' == $this->payload['sku'] )
+				? $this->payload['name']
+				: $this->payload['sku'];
+
+			$sku = $this->generate_unique_sku( $rawSku, $this->payload['id'] ?? 0 );
+
+			if ( empty($sku) ) {
+				$this->add_error( 'SKU already exist' );
+				$this->response->set_response(false);
+				return $this->response->get_response();
+			}
+			$new_product->set_sku( $sku );
+
+			
+			$barcode = $this->get_payload('barcode','');
+			if(!empty($barcode)){
+				if(!$this->set_product_barcode($new_product,$barcode,true)){
+					$this->add_error("This barcode already exists.");
+					$this->set_response(false,null);
 
 					return $this->response->get_response();
 				}
-				$this->add_error( 'SKU already exist' );
-
-				return $this->response->get_response();
-			} else {
-				$new_product->set_sku( $sku );
-			}
-
-			
-			if ( $new_product->meta_exists( '_vt_barcode' ) ) {
-				$new_product->update_meta_data( '_vt_barcode', $this->get_payload( 'barcode', '' ) );
-			} else {
-				$new_product->add_meta_data( '_vt_barcode', $this->get_payload( 'barcode', '' ) );
 			}
 			if ( ! empty( $this->get_payload( 'global_unique_id', '' ) ) ) {
 				if ( ! $this->set_global_uid( $new_product, $this->get_payload( 'global_unique_id', '' ), true ) ) {
@@ -1892,35 +1793,30 @@ class Pos_Product_Api extends API_Base {
 				$product->set_slug( $this->payload['slug'] );
 			}
 			$product->set_slug( str_replace( ' ', '_', strtolower( $this->payload['name'] ) ) );
-			$sku = ( '' == $this->payload['sku'] ) ? str_replace(
-				' ',
-				'-',
-				strtolower( $this->payload['name'] )
-			) : str_replace( ' ', '-', strtolower( $this->payload['sku'] ) );
-			if ( wc_get_product_id_by_sku( $sku ) && wc_get_product_id_by_sku( $sku ) != $this->payload['id'] ) {
-				if ( '' == $this->payload['sku'] ) {
-					$this->add_error( 'Please provide a SKU or change the name of product' );
-					$this->add_error( 'SKU already exist' );
+
+			$rawSku = ( '' == $this->payload['sku'] )
+				? $this->payload['name']
+				: $this->payload['sku'];
+
+			$sku = $this->generate_unique_sku( $rawSku, $this->payload['id'] ?? 0 );
+
+			if ( empty($sku) ) {
+				$this->add_error( 'SKU already exist' );
+				$this->response->set_response(false);
+				return $this->response->get_response();
+			}
+			$product->set_sku( $sku );
+
+			$barcode = $this->get_payload('barcode','');
+			if(!empty($barcode)){
+				if(!$this->set_product_barcode($product,$barcode,true)){
+					$this->add_error("This barcode already exists.");
+					$this->set_response(false,null);
 
 					return $this->response->get_response();
 				}
-				$this->add_error( 'SKU already exist' );
+			}
 
-				return $this->response->get_response();
-			} else {
-				$product->set_sku( $sku );
-			}
-			if ( $product->meta_exists( '_vt_barcode' ) ) {
-				$product->update_meta_data(
-					'_vt_barcode',
-					str_replace( ' ', '-', strtolower( $this->payload['barcode'] ) )
-				);
-			} else {
-				$product->add_meta_data(
-					'_vt_barcode',
-					str_replace( ' ', '-', strtolower( $this->payload['barcode'] ) )
-				);
-			}
 			if ( ! empty( $this->get_payload( 'global_unique_id', '' ) ) ) {
 				if ( ! $this->set_global_uid( $product, $this->get_payload( 'global_unique_id', '' ), true ) ) {
 					$this->add_error( 'Invalid or duplicated GTIN, UPC, EAN or ISBN.' );
@@ -1992,6 +1888,64 @@ class Pos_Product_Api extends API_Base {
 	}
 
 	/**
+	 * The generate unique sku is generated by appsbd
+	 *
+	 * @param mixed $value It is value param.
+	 * @param mixed $ignore_product_id It is ignore_product_id param.
+	 *
+	 * @return string
+	 */
+	private function generate_unique_sku( $value, $ignore_product_id = 0 ) {
+
+		$base = sanitize_title( $value );
+		$base = substr( $base, 0, 50 );
+
+		if ( empty( $base ) ) {
+			$base = 'product';
+		}
+
+		$sku = $base;
+		$i   = 1;
+
+		while ( $this->sku_exists( $sku, $ignore_product_id ) ) {
+			$sku = $base . '-' . $i;
+			$i++;
+
+			if ( $i > 10 ) {
+				$sku = $base . '-' . time();
+				break;
+			}
+		}
+
+		return $sku;
+	}
+
+	/**
+	 * The sku exists is generated by appsbd
+	 *
+	 * @param mixed $sku It is sku param.
+	 * @param mixed $ignore_product_id It is ignore_product_id param.
+	 *
+	 * @return bool
+	 */
+	private function sku_exists( $sku, $ignore_product_id = 0 ) {
+
+		$product_id = wc_get_product_id_by_sku( $sku );
+
+		if ( ! $product_id ) {
+			return false;
+		}
+
+		if ( $ignore_product_id && $product_id == $ignore_product_id ) {
+			return false;
+		}
+
+		return true;
+	}
+
+
+
+	/**
 	 * The add variation product is generated by appsbd
 	 *
 	 * @param any $parent_id Parent_id is for product id.
@@ -2026,38 +1980,27 @@ class Pos_Product_Api extends API_Base {
 			}
 		}
 		$variation->set_attributes( $attributes );
-		$slg     = $name . '-' . implode( '-', $attributes );
-		$sku     = ( '' == $vari['sku'] ) ? str_replace( ' ', '-', strtolower( $slg ) ) : str_replace(
-			' ',
-			'-',
-			strtolower( $vari['sku'] )
-		);
-		$vari_id = wc_get_product_id_by_sku( $sku );
-		if ( ! empty( $vari['id'] ) && ! empty( $vari['sku'] ) && ! empty( $vari_id ) ) {
-			if ( $vari_id != $vari['id'] ) {
-				$this->add_error( 'Variation SKU already exist' );
 
-				return $this->response->get_response();
-			} else {
-				$variation->set_sku( $sku );
-			}
-		} elseif ( ! empty( $vari_id ) ) {
-			if ( '' == $vari['sku'] ) {
-				$this->add_error( 'Please provide valid variation SKU or change name of product' );
-				$this->add_error( 'Variation SKU already exist' );
+		$rawSku = ( '' == $vari['sku'] )
+			? strtolower($name)
+			: strtolower( $vari['sku'] );
 
-				return $this->response->get_response();
-			}
-			$this->add_error( 'Variation SKU already exist' );
+		$sku = $this->generate_unique_sku( $rawSku, $vari['id'] ?? 0 );
 
+		if ( empty($sku) ) {
+			$this->add_error( 'SKU already exist' );
+			$this->response->set_response(false);
 			return $this->response->get_response();
-		} else {
-			$variation->set_sku( $sku );
 		}
-		if ( $variation->meta_exists( '_vt_barcode' ) ) {
-			$variation->update_meta_data( '_vt_barcode', str_replace( ' ', '-', strtolower( $vari['barcode'] ) ) );
-		} else {
-			$variation->add_meta_data( '_vt_barcode', str_replace( ' ', '-', strtolower( $vari['barcode'] ) ) );
+		$variation->set_sku( $sku );
+
+		if(!empty($vari['barcode'])){
+			if(!$this->set_product_barcode($variation,$vari['barcode'],true)){
+				$this->add_error("This barcode already exists.");
+				$this->response->set_response(false);
+
+				return $this->response->get_response();
+			}
 		}
 
 		if ( ! empty( $vari['global_unique_id'] ) ) {
@@ -2164,6 +2107,65 @@ class Pos_Product_Api extends API_Base {
 		}
 
 		return true;
+	}
+
+	/**
+	 * The set product barcode is generated by appsbd
+	 *
+	 * @param mixed $product It is product param.
+	 * @param mixed $barcode It is barcode param.
+	 * @param mixed $is_edit It is is_edit param.
+	 *
+	 * @return API_Response|void
+	 */
+	public function set_product_barcode( &$product, $barcode, $is_edit = false ){
+
+		$barcode = str_replace(' ', '-', strtolower($barcode));
+		$product_id = $product->get_id();
+
+		if ( $is_edit ) {
+			$old = $product->get_meta('_vt_barcode');
+			if ( $old === $barcode ) {
+				return true;
+			}
+			if ( $this->vt_barcode_exists( $barcode, $product_id ) ) {
+				return false;
+			}
+			$product->update_meta_data( '_vt_barcode', $barcode );
+			return true;
+		}
+
+		if ( $this->vt_barcode_exists( $barcode ) ) {
+			return false;
+		}
+
+		$product->add_meta_data( '_vt_barcode', $barcode );
+		return true;
+	}
+
+
+
+	public function vt_barcode_exists( $barcode, $exclude_product_id = 0 ) {
+		global $wpdb;
+
+		$barcode = sanitize_text_field( $barcode );
+
+		$sql = "
+        SELECT pm.post_id
+        FROM {$wpdb->postmeta} pm
+        INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+        WHERE pm.meta_key = '_vt_barcode'
+        AND pm.meta_value = %s
+        AND p.post_type IN ('product','product_variation')
+    ";
+
+		if ( $exclude_product_id > 0 ) {
+			$sql .= $wpdb->prepare( " AND p.ID != %d", $exclude_product_id );
+		}
+
+		$sql = $wpdb->prepare( $sql, $barcode );
+
+		return (bool) $wpdb->get_var( $sql );
 	}
 
 	/**

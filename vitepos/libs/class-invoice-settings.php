@@ -451,6 +451,10 @@ class Invoice_Settings {
 	 */
 	public static function save_settings( $data ) {
 		$save_object = new self();
+		$old_settings = get_option('vtpos_inv_setting');
+		if(!empty($old_settings)){
+			$save_object->bind_by_array_for_ajax($old_settings);
+		}
 		$save_object->bind_by_array( $data );
 
 		return update_option( 'vtpos_inv_setting', $save_object ) || add_option( 'vtpos_inv_setting', $save_object );

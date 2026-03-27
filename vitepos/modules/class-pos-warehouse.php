@@ -45,6 +45,9 @@ class POS_Warehouse extends Vitepos_Module {
 			if ( ! ( $product instanceof \WC_Product ) ) {
 				$product = wc_get_product( $product );
 			}
+			if ( empty( $product->get_stock_quantity() ) ) {
+				return 0;
+			}
 			return $product->get_stock_quantity();
 		}
 		if ( $product instanceof \WC_Product ) {

@@ -205,7 +205,7 @@ class Pos_Outlet_Api extends API_Base {
 				if ( ! $log->user_note ) {
 					$log->user_note = '';
 				}
-				$log->entry_date = appsbd_get_wp_datetime_with_format( $log->entry_date );
+				$log->entry_date = appsbd_get_wp_datetime_with_format( $log->entry_time );
 			}
 			if ( ! empty( $data ) ) {
 				$this->set_response( true, '', $data );

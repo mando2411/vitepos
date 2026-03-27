@@ -384,6 +384,7 @@ class Mapbd_Pos_Warehouse extends ViteposModel {
 	 * @return bool
 	 */
 	public static function delete_by_id( $id ) {
+		Mapbd_Pos_Counter::delete_by_key_value( 'outlet_id', $id );
 		return self::delete_by_key_value( 'id', $id );
 	}
 
@@ -395,9 +396,12 @@ class Mapbd_Pos_Warehouse extends ViteposModel {
 	 * @return string
 	 */
 	public static function get_outlet_name_by_id( $id ) {
-		$outlet = self::find_by( 'id', $id );
-		if ( ! empty( $outlet ) ) {
-			return $outlet->name;
+		if (!empty($id))
+		{
+			$outlet = self::find_by( 'id', $id,["status"=>'A'] );
+			if ( ! empty( $outlet ) ) {
+				return $outlet->name;
+			}
 		}
 		return null;
 	}
@@ -503,13 +507,13 @@ class Mapbd_Pos_Warehouse extends ViteposModel {
 				$outlet_stocks[ $outlet_id ] = 0;
 			}
 			if ( ! $is_offline ) {
-				if ( $product->get_manage_stock() && ( $outlet_stocks[ $outlet_id ] < $quantity || $outlet_stocks[ $outlet_id ] <= 0 ) ) {
+				if (  $product->get_manage_stock() && ( $outlet_stocks[ $outlet_id ] < $quantity || $outlet_stocks[ $outlet_id ] <= 0 ) ) {
 					$obj->add_error( 'Failed to update stock' );
 
 					return false;
 				}
 			}
-			if ( $product->get_manage_stock() ) {
+			if ( $product->get_manage_stock() && $outlet_stocks[ $outlet_id ]>=$quantity ) {
 				$pre_stock                   = $outlet_stocks[ $outlet_id ];
 				$outlet_stocks[ $outlet_id ] = $outlet_stocks[ $outlet_id ] - $quantity;
 				if ( update_post_meta( $product->get_id(), $outlet_stock_key, $outlet_stocks ) ) {

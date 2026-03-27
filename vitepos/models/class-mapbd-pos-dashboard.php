@@ -33,14 +33,19 @@ class Mapbd_POS_Dashboard extends ViteposModel {
 
 		$outlets                 = Mapbd_Pos_Warehouse::fetch_all_key_value( 'id', 'name' );
 		$response->total_outlets = count( $outlets );
+
 		foreach ( $response->outlets as &$item ) {
 			$response->total_order  += $item->total_order;
 			$response->total_amount += $item->total_amount;
 			$item->total_amount      = vitepos_number_format( $item->total_amount );
 			$item->total_amount_text = wc_price( $item->total_amount );
 			$item->outlet_name       = appsbd_get_text_by_key( $item->outlet_id, $outlets );
-
 		}
+
+		$outlets_ids =  array_keys( $outlets );
+		$response->outlets = array_values(array_filter( $response->outlets, function ( $item ) use ( $outlets_ids ) {
+			return in_array( $item->outlet_id, $outlets_ids );
+		}));
 		$response->total_amount_text = wc_price( $response->total_amount );
 
 		return $response;

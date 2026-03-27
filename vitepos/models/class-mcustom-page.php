@@ -132,19 +132,7 @@ class Mcustom_Page {
 	 * @return false|void
 	 */
 	public static function add_page( $data ) {
-		if (isset( $data['hasCount'] ) && $data['hasCount'] === '1')
-		{
-			$data['hasCount']=true;
-		}else{
-			$data['hasCount']=false;
-		}
 
-		if (isset( $data['isCustom'] ) && $data['isCustom'] === '1')
-		{
-			$data['isCustom']=true;
-		}else{
-			$data['isCustom']=false;
-		}
 
 		if ( ! self::valid_data( $data ) ) {
 			return false;
@@ -163,19 +151,19 @@ class Mcustom_Page {
 	 * @return false|void
 	 */
 	public static function edit_page( $id, $data ) {
-		if (isset( $data['hasCount'] ) && $data['hasCount'] === '1')
-		{
-			$data['hasCount']=true;
-		}else{
-			$data['hasCount']=false;
-		}
 
-		if (isset( $data['isCustom'] ) && $data['isCustom'] === '1')
-		{
-			$data['isCustom']=true;
-		}else{
-			$data['isCustom']=false;
-		}
+
+
+
+
+
+
+
+
+
+
+
+
 		if ( ! self::valid_data( $data ) ) {
 			return false;
 		}
@@ -236,8 +224,8 @@ class Mcustom_Page {
 		foreach ( $data as &$item ) {
 			if ( ! isset( $item->custom_props->price_fs ) ) {
 				$item->custom_props->price_fs = $item->custom_props->font_size;
-				$item->hasCount = $item->hasCount!='0'?true:false;
-				$item->isCustom = $item->isCustom!='0'?true:false;
+				$item->hasCount = empty($item->hasCount)?'N':'Y';
+				$item->isCustom = empty($item->isCustom)?'N':'Y';
 			}
 		}
 		return $data;

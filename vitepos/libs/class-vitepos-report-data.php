@@ -275,7 +275,7 @@ class Vitepos_Report_Data {
 				INNER JOIN {$this->users} ON u.meta_value = {$this->users}.ID 
 				LEFT JOIN {$this->usermeta} ON {$this->usermeta}.user_id={$this->users}.ID and {$this->usermeta}.meta_key='billing_phone'
 				LEFT JOIN {$this->usermeta} AS fname ON fname.user_id={$this->users}.ID and fname.meta_key='first_name'
-				LEFT JOIN {$this->usermeta} AS lname ON fname.user_id={$this->users}.ID and lname.meta_key='last_name'
+				LEFT JOIN {$this->usermeta} AS lname ON lname.user_id={$this->users}.ID and lname.meta_key='last_name'
 	
 				WHERE 1=1
 				{$date_condition}

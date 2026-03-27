@@ -224,7 +224,7 @@ class Mapbd_Pos_Cash_Drawer_Log extends ViteposModel {
 		$newobj->extra_param( $extra_param ); 
 		$newobj->ref_type( $ref_type ); 
 		$newobj->ref_id( $ref_id ); 
-		$newobj->entry_time( gmdate( 'Y-m-d' ) );
+		$newobj->entry_time( gmdate( 'Y-m-d H:i:s' ) );
 		return $newobj->save();
 	}
 	/**

@@ -465,6 +465,11 @@ class POS_Customer extends BaseModel {
 			return false;
 		}
 		$user->user_email = $this->email;
+		if (empty($this->username))
+		{
+			$this->add_error( 'Username is required.' );
+			return false;
+		}
 		if ( username_exists( $this->username ) ) {
 			$this->add_error( 'Username already exist.' );
 
@@ -478,6 +483,12 @@ class POS_Customer extends BaseModel {
 		$user->user_status = true;
 		$user->user_pass   = $this->password;
 		$user_id           = wp_insert_user( $user );
+
+		if ( is_wp_error( $user_id ) ) {
+			$this->add_error( $user_id->get_error_message() );
+			return false;
+		}
+
 		$user_get          = new \WP_User( $user_id );
 		$user_get->set_role( $this->role );
 		if ( self::contact_exists( $this->contact_no ) ) {

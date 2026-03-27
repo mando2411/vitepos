@@ -288,9 +288,7 @@ class Pos_Purchase_Api extends API_Base {
 		$stock        = $pre_stock + $outlet_stock;
 
 		if ( ! POS_Settings::is_stockable() || POS_Settings::is_default_stock() ) {
-			if ( ! POS_Settings::get_manage_stock_without_parent($product)) {
-				$product->set_manage_stock( true );
-			}
+			$product->set_manage_stock(true);
 			$product->set_stock_quantity( $stock );
 			if ( $product->meta_exists( '_vt_prev_purchase_price' ) ) {
 				$product->update_meta_data( '_vt_prev_purchase_price', $purchase->prev_purchase_cost );
@@ -961,17 +959,25 @@ class Pos_Purchase_Api extends API_Base {
 			if ( ! is_array( $outlet_stocks ) ) {
 				$outlet_stocks = array();
 			}
+
 			$product         = new \stdClass();
 			$product->id     = $product_obj->get_id();
 			$product->name   = $product_obj->get_name();
 			$product->stocks = array();
 			if ( count( $outlet_stocks ) > 0 ) {
 				foreach ( $outlet_stocks as $key => &$stock ) {
-					$obj               = new \stdClass();
-					$obj->outlet_id    = $key;
-					$obj->outlet_name  = Mapbd_Pos_Warehouse::get_outlet_name_by_id( $key );
-					$obj->stock        = $stock;
-					$product->stocks[] = $obj;
+					if ($key>0)
+					{
+						$obj               = new \stdClass();
+						$obj->outlet_id    = $key;
+						$obj->outlet_name  = Mapbd_Pos_Warehouse::get_outlet_name_by_id( $key );
+						$obj->stock        = $stock;
+						if (!empty($obj->outlet_name))
+						{
+							$product->stocks[] = $obj;
+						}
+
+					}
 				}
 			} else {
 				$this->add_error( 'The product ( %s ) does not have any stock', '<span class="text-success">' . $product->name . '</span>' );

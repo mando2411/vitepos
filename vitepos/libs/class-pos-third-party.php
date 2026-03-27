@@ -58,6 +58,8 @@ class POS_Third_Party {
 		add_filter( 'vitepos/3rd-party/filter/product-barcode', array( $obj, 'get_barcode_of_product' ), 10, 2 );
 		add_filter( 'vitepos/3rd-party/filter/after-header-html', array( $obj, 'after_header_html' ), 10, 2 );
 		add_filter( 'vitepos/3rd-party/filter/bofore-footer-html', array( $obj, 'before_footer_html' ), 10, 2 );
+		add_filter( 'vitepos/3rd-party/filter/refund-bofore-footer-html', array( $obj, 'refund_before_footer_html' ), 10, 2 );
+		add_filter( 'vitepos/3rd-party/filter/refund-after-header-html', array( $obj, 'refund_after_header_html' ), 10, 2 );
 
 	}
 
@@ -76,21 +78,6 @@ class POS_Third_Party {
 			}
 		}
 		return $html;
-		$invoice_number ='POS-S-00072-2025';
-		$final = "https://pos.dixitalmedia.net/wp-content/uploads/2025/09/beanie-2-300x300.jpg";
-		$html = '<div style="width:100%; display:flex; justify-content: center; margin:12px 0 8px 0;">';
-		$html .='<div style="max-width: 130px;">';
-		$html .= '  <div style="font-size:12px; margin-bottom:6px;">QR tributario:</div>';
-		$html .= '<img src="' . esc_url( $final ) . '" alt="QR tributario" style="display:inline-block; max-width:160px; height:auto; margin:0 auto;" />';
-		$html .= '<div style="font-size:11px; margin-top:6px; letter-spacing:0.5px;">VERI*FACTU</div>';
-		if (!empty($invoice_number))
-		{
-			
-			$html .= '  <div style="font-size:11px; margin-top:6px; letter-spacing:0.5px;">Invoice No : ' . esc_html( $invoice_number ) . '</div>';
-		}
-		$html .=  '</div>';
-		$html .=  '</div>';
-		return $html;
 	}
 
 	public function after_header_html($html,$order) {
@@ -102,10 +89,36 @@ class POS_Third_Party {
 		return $html;
 	}
 
+	public function refund_before_footer_html($html,$refund) {
+		if (POS_Settings::is_tax_qr_enabled()) {
+			if ( POS_Settings::is_tax_qr_position() == 'F' ) {
+				$html=$this->get_verifactu_refund_html($html,$refund);
+			}
+		}
+		return $html;
+	}
+
+	public function refund_after_header_html($html,$refund) {
+		if (POS_Settings::is_tax_qr_enabled()) {
+			if ( POS_Settings::is_tax_qr_position() == 'H' ) {
+				$html=$this->get_verifactu_refund_html($html,$refund);
+			}
+		}
+		return $html;
+	}
+
 	public function get_verifactu_html( $html,$order ) {
 		if (appsbd_is_activated_plugin('factupress-verifactu-for-woocommerce/factupress-verifactu-for-woocommerce.php'))
 		{
-			$html = apply_filters('vitepos/filter/factupress/qr-html',$html,$order,'simplified-invoice');
+			$html = apply_filters('vitepos/filter/factupress/qr-html',$html,$order,'simplified_invoice');
+		}
+		return $html;
+	}
+
+	public function get_verifactu_refund_html( $html,$refund ) {
+		if (appsbd_is_activated_plugin('factupress-verifactu-for-woocommerce/factupress-verifactu-for-woocommerce.php'))
+		{
+			$html = apply_filters('vitepos/filter/factupress/refund-qr-html',$html,$refund,'simplified_credit_note');
 		}
 		return $html;
 	}

@@ -603,7 +603,8 @@ class POS_Order {
 				$v_order->taxes[] = $tobj;
 			}
 		}
-		if ( ( $total_tax_cal == $tax_total ) || ( $tried_count > 4 ) ) {
+
+		if ( ( abs($total_tax_cal) == $tax_total ) || ( $tried_count > 4 ) ) {
 			return;
 		} else {
 			self::get_tax_list( $taxes, $v_order, $tried_count + 1 );
@@ -964,6 +965,7 @@ class POS_Order {
 				$obj->refund_total    = 0.0;
 				$obj->refund_discount = $refund->get_meta( '_vtp_refund_discount' );
 				$obj->refund_fee = $refund->get_meta( '_vtp_refund_fee' );
+
 				foreach ( $refund->get_items() as $item ) {
 					if ( $item instanceof \WC_Order_Item_Product ) {
 						$item_id = absint( $item->get_meta( '_refunded_item_id' ) );
@@ -982,6 +984,8 @@ class POS_Order {
 						$item_obj->addons        = ! empty( $main_item->addons ) ? $main_item->addons : array();
 						$item_obj->addon_total   = ! empty( $main_item->addon_total ) ? $main_item->addon_total : 0.0;
 						$item_obj->tax_total     = ! empty( $main_item->tax_amount ) ? $main_item->tax_amount : 0.0;
+						$item_obj->total_taxes   = $main_item->total_taxes;
+						
 						$obj->tax_total         += ($item_obj->tax_total * $item_obj->qty);
 						$obj->refund_total      += $item_obj->total;
 						$obj->items[]            = $item_obj;
@@ -990,7 +994,32 @@ class POS_Order {
 				$order_refund_total = abs( vitepos_wc_amount( $refund->get_total() - $refund->get_total_tax() ) );
 				
 				
+				$obj->taxes       = array();
+				$taxes              = $refund->get_taxes();
+				self::get_tax_list( $taxes, $obj );
+				if ( ! empty( $obj->taxes ) && count( $obj->taxes ) > 0 ) {
+					foreach ( $obj->taxes as &$tax ) {
+						if ( is_object( $tax ) && isset( $tax->val ) ) {
+							$tax->val = abs( $tax->val );
+						} elseif ( is_array( $tax ) && isset( $tax['val'] ) ) {
+							$tax['val'] = abs( $tax['val'] );
+						}
+					}
+					unset($tax);
+				}
+
 				$obj->refund_total = abs( vitepos_wc_amount( $obj->refund_total ) );
+				if ($refund->meta_exists('_aeat_qr_url')) 
+				{
+					$obj->qr_url = $refund->get_meta('_aeat_qr_url');
+					$obj->wcpdf_invoice_number = $refund->get_meta('_wcpdf_simplified_invoice_number_data');
+				}
+
+				$obj->before_footer = apply_filters('vitepos/3rd-party/filter/refund-bofore-footer-html', '', $refund);
+				$obj->after_header = apply_filters('vitepos/3rd-party/filter/refund-after-header-html', '', $refund);
+
+
+
 				$order_data->refund_orders[] = $obj;
 
 			}

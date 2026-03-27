@@ -240,7 +240,7 @@ class POS_Order_Item {
 		if ( $include_tax ) {
 			$o_item->tax_total = (float) $item->get_total_tax();
 		} else {
-			$o_item->tax_total = (float) $item->get_total_tax() - $o_item->addon_tax;
+			$o_item->tax_total = (float) $item->get_total_tax();
 		}
 		$taxes     = $item->get_taxes();
 		$tax_list     = array();
@@ -291,7 +291,7 @@ class POS_Order_Item {
 			$o_item->status     = $item->get_meta( '_vtp_item_status' );
 			$o_item->can_cancel = $item->get_meta( '_vtp_item_can_cancel' );
 		}
-		
+		 $o_item->price =$o_item->price + $o_item->addon_total;
 		
 		if ( $item->meta_exists( '_vc_coupon_code' ) ) {
 			$o_item->coupon_code    = $item->get_meta( '_vc_coupon_code' );
