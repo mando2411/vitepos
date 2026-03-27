@@ -1132,6 +1132,196 @@ class Pos_Product_Api extends API_Base {
 	}
 
 	/**
+	 * Detects whether an attribute is color-like.
+	 *
+	 * @param array $attribute Attribute payload item.
+	 *
+	 * @return bool
+	 */
+	private function is_color_attribute( $attribute ) {
+		$slug_name = '';
+		if ( ! empty( $attribute['slug'] ) ) {
+			$slug_name = sanitize_title( $attribute['slug'] );
+		} elseif ( ! empty( $attribute['name'] ) ) {
+			$slug_name = sanitize_title( $attribute['name'] );
+		}
+
+		if ( '' === $slug_name ) {
+			return false;
+		}
+
+		return false !== strpos( $slug_name, 'color' ) || false !== strpos( $slug_name, 'colour' );
+	}
+
+	/**
+	 * Normalizes attribute options for variation values.
+	 *
+	 * For taxonomy attributes (e.g. pa_color), Woo variations expect term slugs.
+	 * For custom attributes, plain option names are used.
+	 *
+	 * @param array $attribute Attribute payload item.
+	 *
+	 * @return array
+	 */
+	private function get_attribute_option_names( $attribute ) {
+		$options               = array();
+		$is_taxonomy_attribute = ! empty( $attribute['id'] ) || ( ! empty( $attribute['slug'] ) && 0 === strpos( $attribute['slug'], 'pa_' ) );
+		if ( empty( $attribute['options'] ) || ! is_array( $attribute['options'] ) ) {
+			return $options;
+		}
+
+		foreach ( $attribute['options'] as $option ) {
+			$option_name = '';
+			if ( is_array( $option ) ) {
+				if ( $is_taxonomy_attribute ) {
+					if ( ! empty( $option['slug'] ) ) {
+						$option_name = $option['slug'];
+					} elseif ( ! empty( $option['name'] ) ) {
+						$option_name = sanitize_title( $option['name'] );
+					}
+				} else {
+					$option_name = ! empty( $option['name'] ) ? $option['name'] : ( ! empty( $option['slug'] ) ? $option['slug'] : '' );
+				}
+			} elseif ( is_string( $option ) || is_numeric( $option ) ) {
+				$option_name = (string) $option;
+				if ( $is_taxonomy_attribute ) {
+					$option_name = sanitize_title( $option_name );
+				}
+			}
+
+			$option_name = trim( $option_name );
+			if ( '' !== $option_name ) {
+				$options[] = $option_name;
+			}
+		}
+
+		return array_values( array_unique( $options ) );
+	}
+
+	/**
+	 * Finds first color attribute with options.
+	 *
+	 * @param array $attributes Product attributes payload.
+	 *
+	 * @return array|null
+	 */
+	private function get_color_attribute_for_auto_variable( $attributes ) {
+		if ( empty( $attributes ) || ! is_array( $attributes ) ) {
+			return null;
+		}
+
+		foreach ( $attributes as $attribute ) {
+			if ( ! is_array( $attribute ) || ! $this->is_color_attribute( $attribute ) ) {
+				continue;
+			}
+
+			$attribute['options'] = $this->get_attribute_option_names( $attribute );
+			if ( ! empty( $attribute['options'] ) ) {
+				return $attribute;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Builds auto variations for color options only.
+	 *
+	 * @param array $color_attribute Color attribute payload.
+	 *
+	 * @return array
+	 */
+	private function build_auto_variations_from_color( $color_attribute ) {
+		$variations  = array();
+		$options     = ! empty( $color_attribute['options'] ) && is_array( $color_attribute['options'] ) ? $color_attribute['options'] : array();
+		$option_size = count( $options );
+
+		if ( 0 === $option_size ) {
+			return $variations;
+		}
+
+		$manage_stock     = 1 == $this->get_payload( 'manage_stock', 0 ) ? 1 : 0;
+		$total_quantity   = (float) $this->get_payload( 'stock_quantity', 0 );
+		$low_stock_amount = (float) $this->get_payload( 'low_stock_amount', 0 );
+		$each_quantity    = $manage_stock ? round( $total_quantity / $option_size, 4 ) : 0;
+
+		$attribute_name = ! empty( $color_attribute['name'] ) ? $color_attribute['name'] : ( ! empty( $color_attribute['slug'] ) ? $color_attribute['slug'] : 'Color' );
+		$attribute_slug = ! empty( $color_attribute['slug'] ) ? $color_attribute['slug'] : sanitize_title( $attribute_name );
+
+		foreach ( $options as $option_name ) {
+			$variations[] = array(
+				'id'                  => 0,
+				'regular_price'       => (float) $this->get_payload( 'regular_price', 0.00 ),
+				'sale_price'          => (float) $this->get_payload( 'sale_price', 0.00 ),
+				'sku'                 => '',
+				'barcode'             => '',
+				'global_unique_id'    => '',
+				'attributes'          => array(
+					array(
+						'id'     => ! empty( $color_attribute['id'] ) ? absint( $color_attribute['id'] ) : 0,
+						'name'   => $attribute_name,
+						'slug'   => $attribute_slug,
+						'option' => $option_name,
+					),
+				),
+				'is_parent_dimension' => true,
+				'tax_status'          => $this->get_payload( 'tax_status', '' ),
+				'tax_class'           => $this->get_payload( 'tax_class', '' ),
+				'weight'              => $this->get_payload( 'weight', '0.00' ),
+				'height'              => $this->get_payload( 'height', '0.00' ),
+				'length'              => $this->get_payload( 'length', '0.00' ),
+				'width'               => $this->get_payload( 'width', '0.00' ),
+				'manage_stock'        => $manage_stock,
+				'stock_quantity'      => $each_quantity,
+				'low_stock_amount'    => $low_stock_amount,
+				'purchase_cost'       => (float) $this->get_payload( 'purchase_cost', 0.00 ),
+			);
+		}
+
+		return $variations;
+	}
+
+	/**
+	 * Converts simple payload to variable payload when multi-color setup is detected.
+	 *
+	 * @return void
+	 */
+	private function normalize_payload_for_auto_variable() {
+		if ( empty( $this->payload ) || ! is_array( $this->payload ) ) {
+			return;
+		}
+
+		$enabled = apply_filters( 'appsbd/vitepos/filter/auto-convert-simple-to-variable', true, $this->payload );
+		if ( ! $enabled ) {
+			return;
+		}
+
+		$current_type = $this->get_payload( 'type', 'simple' );
+		if ( 'variable' === $current_type ) {
+			return;
+		}
+
+		$attributes     = $this->get_payload( 'attributes', array() );
+		$has_variations = ! empty( $this->payload['variations'] ) && is_array( $this->payload['variations'] );
+		$color_attr     = $this->get_color_attribute_for_auto_variable( $attributes );
+
+		$should_convert = $has_variations;
+		if ( ! $should_convert && ! empty( $color_attr ) && count( $color_attr['options'] ) > 1 ) {
+			$should_convert = true;
+		}
+
+		if ( ! $should_convert ) {
+			return;
+		}
+
+		$this->payload['type'] = 'variable';
+
+		if ( ! $has_variations && ! empty( $color_attr ) ) {
+			$this->payload['variations'] = $this->build_auto_variations_from_color( $color_attr );
+		}
+	}
+
+	/**
 	 * The getStock is generated by appsbd
 	 *
 	 * @param any $data Its string.
@@ -1309,6 +1499,9 @@ class Pos_Product_Api extends API_Base {
 
 				return $this->response->get_response();
 			}
+
+			$this->normalize_payload_for_auto_variable();
+
 			if ( 'variable' == $this->payload['type'] ) {
 				$product = new \WC_Product_Variable();
 				$product->set_name( $this->get_payload( 'name', '' ) );
