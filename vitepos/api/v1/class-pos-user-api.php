@@ -232,6 +232,11 @@ class Pos_User_Api extends API_Base {
 		 */
 		$response_data = apply_filters( 'apbd-auth/filter/logged-user', $response_data, $user );
 
+		if ( ! isset( $response_data->caps ) || ! is_array( $response_data->caps ) ) {
+			$response_data->caps = array();
+		}
+		$response_data->caps['apbd-wp-login'] = true;
+
 		return $response_data;
 	}
 
