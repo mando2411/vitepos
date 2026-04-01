@@ -189,6 +189,24 @@ if ( ! function_exists( 'start_vitepos' ) ) {
 
 		$booted = true;
 
+		add_filter(
+			'apbd-vitepos/filter/logged-user',
+			function ( $response_data ) {
+				if ( ! is_object( $response_data ) ) {
+					return $response_data;
+				}
+				if ( ! isset( $response_data->caps ) || ! is_array( $response_data->caps ) ) {
+					$response_data->caps = array();
+				}
+
+				// Keep Pro-only UI/features unlocked after removing legacy license bootstrap.
+				$response_data->caps['apbd-wp-login'] = true;
+
+				return $response_data;
+			},
+			99999
+		);
+
 		register_activation_hook( $kernel->plugin_file, array( $kernel, 'on_active' ) );
 		register_deactivation_hook( $kernel->plugin_file, array( $kernel, 'on_deactivate' ) );
 
