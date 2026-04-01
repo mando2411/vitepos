@@ -2004,9 +2004,5 @@ class  vtposLicenseV260423
     }
 
 }
-	add_action("APBDVITEPOS/init",
-		function (&$kernelObj) {
-			new vtposLicenseV260423($kernelObj);
-		}
-	);
+	// License bootstrap disabled: prevent any legacy license UI/validation flow from initializing.
 }
