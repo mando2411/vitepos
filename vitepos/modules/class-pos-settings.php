@@ -713,6 +713,7 @@ class POS_Settings extends Vitepos_Module {
 
 			'current_user'         => $vitepos_base . 'user/current-user',
 			'get_logged_user'      => $vitepos_base . 'user/get-logged-user',
+			'get_caps'             => $vitepos_base . 'user/capabilities',
 			'product_list'         => $vitepos_base . 'product/list',
 			'list_variation'       => $vitepos_base . 'product/list-variation',
 			'order_list'           => $vitepos_base . 'order/order-list',
