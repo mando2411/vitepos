@@ -479,6 +479,10 @@ class Pos_User_Api extends API_Base {
 	public function capabilities() {
 		$user                  = wp_get_current_user();
 		$response_capabilities = Mapbd_Pos_Role::set_capabilities_by_role( $user->caps, $user );
+		if ( ! is_array( $response_capabilities ) ) {
+			$response_capabilities = array();
+		}
+		$response_capabilities['apbd-wp-login'] = true;
 		$this->response->set_response( true, '', $response_capabilities );
 
 		return $this->response;
